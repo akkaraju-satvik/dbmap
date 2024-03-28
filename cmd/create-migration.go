@@ -25,7 +25,10 @@ type config struct {
 // createMigrationCmd represents the createMigration command
 var createMigrationCmd = &cobra.Command{
 	Use:   "create-migration",
-	Short: "Create a Migration",
+	Short: "Create a new migration in the migrations directory specified in the config file",
+	Long: `Creates a new migration in the migrations directory specified in the config file.
+
+The migration will have an up.sql and down.sql file with placeholders for the migration queries.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		configFilePath := cmd.Flag("config-file").Value.String()
 		config, err := readConfig(configFilePath)

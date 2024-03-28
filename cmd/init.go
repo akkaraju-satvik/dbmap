@@ -23,7 +23,10 @@ const configFileContent = `
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize the migrator",
+	Short: "Initialize dbmigo in a project directory",
+	Long: `Initializes dbmigo in a project directory by creating a migrations directory and a config file.
+
+The config file will contain the database connection string and the migrations directory path.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		migrationsDir, err := cmd.Flags().GetString("dir")
 		if err != nil {
