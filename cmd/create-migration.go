@@ -22,7 +22,6 @@ type config struct {
 	DBConnection  string `json:"db_connection" yaml:"db_connection"`
 }
 
-// createMigrationCmd represents the createMigration command
 var createMigrationCmd = &cobra.Command{
 	Use:   "create-migration",
 	Short: "Create a new migration in the migrations directory specified in the config file",
@@ -87,7 +86,6 @@ func init() {
 }
 
 func readConfig(configFilePath string) (config, error) {
-	// Read the config file
 	fileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return config{}, err
