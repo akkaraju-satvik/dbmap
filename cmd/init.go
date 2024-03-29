@@ -91,7 +91,7 @@ The config file will contain the database connection string and the migrations d
 }
 
 func init() {
-	initCmd.Flags().StringP("dir", "d", "migrations", "Directory to store migration files")
+	initCmd.Flags().StringP("migrations-dir", "d", "migrations", "Directory to store migration files")
 	initCmd.Flags().StringP("db-connection", "c", "", "Database connection string")
 	initCmd.MarkFlagRequired("db-connection")
 	initCmd.Flags().BoolP("ssl", "s", false, "Use SSL for database connection")
