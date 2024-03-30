@@ -28,7 +28,7 @@ var initCmd = &cobra.Command{
 
 The config file will contain the database connection string and the migrations directory path.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		migrationsDir, err := cmd.Flags().GetString("dir")
+		migrationsDir, err := cmd.Flags().GetString("migrations-dir")
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
