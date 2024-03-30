@@ -18,6 +18,7 @@ create table if not exists _dbmigo_migration_queries (
   query_time timestamp with time zone not null default now()
 );
 
+alter table _dbmigo_migration_queries drop constraint if exists fk_migration_id;
 alter table _dbmigo_migration_queries add constraint fk_migration_id foreign key (migration_id) references _dbmigo_migrations(migration_id);
 
 `
