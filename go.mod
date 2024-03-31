@@ -1,4 +1,4 @@
-module github.com/akkaraju-satvik/dbmigo
+module github.com/akkaraju-satvik/dbmap
 
 go 1.22.1
 
