@@ -9,6 +9,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const ConfigFile = `migrations_dir: $MIGRATIONS_DIR
+db_connection: $DB_URL
+`
+
 type Config struct {
 	MigrationsDir string `json:"migrations_dir" yaml:"migrations_dir"`
 	DBConnection  string `json:"db_connection" yaml:"db_connection"`
