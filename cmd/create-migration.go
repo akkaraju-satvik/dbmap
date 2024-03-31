@@ -54,7 +54,7 @@ The migration will have an up.sql and down.sql file with placeholders for the mi
 }
 
 func init() {
-	createMigrationCmd.Flags().StringP("config-file", "c", "dbmap.json", "config file to use")
+	createMigrationCmd.Flags().StringP("config-file", "c", "dbmap.config.yaml", "config file to use")
 	rootCmd.AddCommand(createMigrationCmd)
 }
 

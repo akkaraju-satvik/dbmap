@@ -8,18 +8,12 @@ import (
 	"strings"
 
 	"github.com/akkaraju-satvik/dbmap/queries"
+	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	_ "github.com/lib/pq"
 )
-
-const configFileContent = `
-{
-	"migrations_dir": "$MIGRATIONS_DIR",
-	"db_connection": "$DB_URL"
-}
-`
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -38,9 +32,17 @@ The config file will contain the database connection string and the migrations d
 			color.Red(err.Error())
 			os.Exit(1)
 		}
-		if connection == "" {
-			color.Red("Please provide a database connection string")
+		if err != nil {
+			color.Red(err.Error())
 			os.Exit(1)
+		}
+		if connection == "" {
+			fmt.Printf("Enter the database connection string: ")
+			fmt.Scanln(&connection)
+			if connection == "" {
+				color.Red("Please provide a valid postgres connection string\n Example: postgres://user:password@localhost:5432/dbname\n")
+				os.Exit(1)
+			}
 		}
 		// check if connection is a postgres connection string
 		postgresConnStringRegex := regexp.MustCompile(`^postgres:\/\/.*\:.*@.*\/.*$`)
@@ -49,7 +51,7 @@ The config file will contain the database connection string and the migrations d
 			os.Exit(1)
 		}
 		ssl, _ := cmd.Flags().GetBool("ssl")
-		if !strings.Contains(connection, "sslmode") && !ssl {
+		if !strings.Contains(connection, "sslmode=require") && !ssl {
 			connection = connection + "?sslmode=disable"
 		}
 		// create migrations directory
@@ -59,13 +61,13 @@ The config file will contain the database connection string and the migrations d
 			os.Exit(1)
 		}
 		// create config file
-		configFile, err := os.Create("dbmap.json")
+		configFile, err := os.Create("dbmap.config.yaml")
 		if err != nil {
 			color.Red("Error creating config file")
 			os.Exit(1)
 		}
 		defer configFile.Close()
-		configFileContent := strings.Replace(configFileContent, "$MIGRATIONS_DIR", migrationsDir, 1)
+		configFileContent := strings.Replace(utils.ConfigFile, "$MIGRATIONS_DIR", migrationsDir, 1)
 		configFileContent = strings.Replace(configFileContent, "$DB_URL", connection, 1)
 		_, err = configFile.WriteString(configFileContent)
 		if err != nil {
@@ -93,12 +95,11 @@ The config file will contain the database connection string and the migrations d
 func init() {
 	initCmd.Flags().StringP("migrations-dir", "d", "migrations", "Directory to store migration files")
 	initCmd.Flags().StringP("db-connection", "c", "", "Database connection string")
-	initCmd.MarkFlagRequired("db-connection")
 	initCmd.Flags().BoolP("ssl", "s", false, "Use SSL for database connection")
 	rootCmd.AddCommand(initCmd)
 }
 
 func removeSetup() {
-	os.Remove("dbmap.json")
+	os.Remove("dbmap.config.yaml")
 	os.Remove("migrations")
 }
