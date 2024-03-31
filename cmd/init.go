@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/akkaraju-satvik/dbmigo/queries"
+	"github.com/akkaraju-satvik/dbmap/queries"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
@@ -23,8 +23,8 @@ const configFileContent = `
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize dbmigo in a project directory",
-	Long: `Initializes dbmigo in a project directory by creating a migrations directory and a config file.
+	Short: "Initialize dbmap in a project directory",
+	Long: `Initializes dbmap in a project directory by creating a migrations directory and a config file.
 
 The config file will contain the database connection string and the migrations directory path.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -59,7 +59,7 @@ The config file will contain the database connection string and the migrations d
 			os.Exit(1)
 		}
 		// create config file
-		configFile, err := os.Create("dbmigo.json")
+		configFile, err := os.Create("dbmap.json")
 		if err != nil {
 			color.Red("Error creating config file")
 			os.Exit(1)
@@ -99,6 +99,6 @@ func init() {
 }
 
 func removeSetup() {
-	os.Remove("dbmigo.json")
+	os.Remove("dbmap.json")
 	os.Remove("migrations")
 }

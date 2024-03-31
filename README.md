@@ -1,3 +1,3 @@
-# dbmigo
+# dbmap
 
-dbmigo is a database migration management for PostgreSQL.
+dbmap is a database migration management for PostgreSQL.

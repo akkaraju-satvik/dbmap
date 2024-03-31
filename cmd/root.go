@@ -10,7 +10,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "dbmigo",
+	Use:   "dbmap",
 	Short: "Migration Management Tool for PostgreSQL",
 }
 

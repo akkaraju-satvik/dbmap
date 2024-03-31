@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/akkaraju-satvik/dbmigo/queries"
-	"github.com/akkaraju-satvik/dbmigo/utils"
+	"github.com/akkaraju-satvik/dbmap/queries"
+	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +54,7 @@ The migration will have an up.sql and down.sql file with placeholders for the mi
 }
 
 func init() {
-	createMigrationCmd.Flags().StringP("config-file", "c", "pgo-migrator.json", "config file to use")
+	createMigrationCmd.Flags().StringP("config-file", "c", "dbmap.json", "config file to use")
 	rootCmd.AddCommand(createMigrationCmd)
 }
 
