@@ -1,15 +1,26 @@
 package cmd
 
 import (
-	"github.com/akkaraju-satvik/dbmigo/utils"
+	"os"
+
+	"github.com/akkaraju-satvik/dbmap/queries"
+	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
 
+type Migration struct {
+	MigrationId     string `db:"migration_id"`
+	MigrationName   string `db:"migration_name"`
+	MigrationTime   string `db:"migration_time"`
+	MigrationStatus string `db:"migration_status"`
+}
+
 var applyMigrationsCmd = &cobra.Command{
 	Use:   "apply-migrations",
-	Short: "Apply all migrations in the migrations directory specified in the config file",
-	Long: `Applies all migrations in the migrations directory specified in the config file.
+	Short: "Apply migrations in the migrations directory specified in the config file",
+	Long: `Applies migrations in the migrations directory specified in the config file.
 
 The migrations will be applied in the order of their creation.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -17,13 +28,56 @@ The migrations will be applied in the order of their creation.`,
 		config, err := utils.ReadConfig(configFilePath)
 		if err != nil {
 			color.Red("Error reading config file\n %s", err.Error())
+			os.Exit(1)
 		}
 		utils.HandleEmptyValuesInConfig(config)
-
+		err = applyMigrations(config)
+		if err != nil {
+			color.Red("Error applying migrations\n %s", err.Error())
+			os.Exit(1)
+		}
 	},
 }
 
 func init() {
-	applyMigrationsCmd.Flags().StringP("config-file", "c", "dbmigo.json", "Path to the config file")
+	applyMigrationsCmd.Flags().StringP("config-file", "c", "dbmap.config.yaml", "Path to the config file")
+	applyMigrationsCmd.Flags().StringP("migration-type", "t", "up", "Type of migration to apply")
 	rootCmd.AddCommand(applyMigrationsCmd)
+}
+
+func applyMigrations(config utils.Config) error {
+	conn, err := sqlx.Open("postgres", config.DbURL)
+	if err != nil {
+		return err
+	}
+
+	var migrations []Migration
+	err = conn.Select(&migrations, queries.GetMigrations)
+	if err != nil {
+		return err
+	}
+	for _, migration := range migrations {
+		if migration.MigrationStatus == "APPLIED" {
+			continue
+		}
+		migrationQuery, err := utils.GetMigrationQuery(config.MigrationsDir, migration.MigrationName, "up")
+		if err != nil {
+			return err
+		}
+		color.Yellow("Applying migration %s", migration.MigrationName)
+		_, err = conn.Exec(migrationQuery)
+		if err != nil {
+			return err
+		}
+		_, err = conn.Exec(queries.UpdateMigrationStatus, migration.MigrationId)
+		if err != nil {
+			return err
+		}
+		_, err = conn.Exec(queries.InsertMigrationQuery, migration.MigrationId, migrationQuery)
+		if err != nil {
+			return err
+		}
+		color.Green("Migration %s applied successfully", migration.MigrationName)
+	}
+	return nil
 }
