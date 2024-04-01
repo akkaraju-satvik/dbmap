@@ -40,7 +40,7 @@ The migration will have an up.sql and down.sql file with placeholders for the mi
 			color.Red(err.Error())
 			os.Exit(1)
 		}
-		db, err := sql.Open("postgres", config.DBConnection)
+		db, err := sql.Open("postgres", config.DbURL)
 		if err != nil {
 			handleErrorWithRemoveMigration(migrationDir, fmt.Sprintf("Error connecting to the database\n %s", err.Error()))
 		}
