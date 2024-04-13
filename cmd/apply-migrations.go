@@ -3,8 +3,9 @@ package cmd
 import (
 	"os"
 
+	"github.com/akkaraju-satvik/dbmap/config"
+	"github.com/akkaraju-satvik/dbmap/migrations"
 	"github.com/akkaraju-satvik/dbmap/queries"
-	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -25,13 +26,12 @@ var applyMigrationsCmd = &cobra.Command{
 The migrations will be applied in the order of their creation.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		configFilePath := cmd.Flag("config-file").Value.String()
-		config, err := utils.ReadConfig(configFilePath)
+		configuration, err := config.Read(configFilePath)
 		if err != nil {
 			color.Red("Error reading config file\n %s", err.Error())
 			os.Exit(1)
 		}
-		utils.HandleEmptyValuesInConfig(config)
-		err = applyMigrations(config)
+		err = applyMigrations(configuration)
 		if err != nil {
 			color.Red("Error applying migrations\n %s", err.Error())
 			os.Exit(1)
@@ -45,22 +45,22 @@ func init() {
 	rootCmd.AddCommand(applyMigrationsCmd)
 }
 
-func applyMigrations(config utils.Config) error {
+func applyMigrations(config config.Config) error {
 	conn, err := sqlx.Open("postgres", config.DbURL)
 	if err != nil {
 		return err
 	}
 
-	var migrations []Migration
-	err = conn.Select(&migrations, queries.GetMigrations)
+	var migrationList []Migration
+	err = conn.Select(&migrationList, queries.GetMigrations)
 	if err != nil {
 		return err
 	}
-	for _, migration := range migrations {
+	for _, migration := range migrationList {
 		if migration.MigrationStatus == "APPLIED" {
 			continue
 		}
-		migrationQuery, err := utils.GetMigrationQuery(config.MigrationsDir, migration.MigrationName, "up")
+		migrationQuery, err := migrations.GetQuery(config.MigrationsDir, migration.MigrationName, "up")
 		if err != nil {
 			return err
 		}

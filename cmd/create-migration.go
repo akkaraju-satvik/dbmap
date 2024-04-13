@@ -9,11 +9,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/akkaraju-satvik/dbmap/config"
 	"github.com/akkaraju-satvik/dbmap/queries"
-	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
+
+var createMigrationErrorStrings = map[string]string{
+	"config":         "Error reading config file\n %s",
+	"migrationDir":   "Error creating migration directory\n %s",
+	"migrationFiles": "Error creating migration files\n %s",
+	"database":       "Error connecting to the database\n %s",
+	"migration":      "Error creating migration\n %s",
+}
 
 var createMigrationCmd = &cobra.Command{
 	Use:   "create-migration",
@@ -23,34 +31,42 @@ var createMigrationCmd = &cobra.Command{
 The migration will have an up.sql and down.sql file with placeholders for the migration queries.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		configFilePath := cmd.Flag("config-file").Value.String()
-		config, err := utils.ReadConfig(configFilePath)
+		config, err := config.Read(configFilePath)
 		if err != nil {
-			color.Red("Error reading config file\n %s", err.Error())
+			color.Red(createMigrationErrorStrings["config"], err.Error())
 			os.Exit(1)
 		}
-		utils.HandleEmptyValuesInConfig(config)
-		currentTime := fmt.Sprintf("%d", time.Now().Unix())
-		migrationDir := config.MigrationsDir + "/" + currentTime
-		if err = os.MkdirAll(migrationDir, 0755); err != nil {
-			color.Red("Error creating migration directory\n %s", err.Error())
-			os.Exit(1)
-		}
-		err = createUpAndDownMigrationFiles(migrationDir)
+		err = createMigration(config)
 		if err != nil {
 			color.Red(err.Error())
 			os.Exit(1)
 		}
-		db, err := sql.Open("postgres", config.DbURL)
-		if err != nil {
-			handleErrorWithRemoveMigration(migrationDir, fmt.Sprintf("Error connecting to the database\n %s", err.Error()))
-		}
-		_, err = db.Exec(queries.CreateMigrationQuery, currentTime)
-		if err != nil {
-			handleErrorWithRemoveMigration(migrationDir, fmt.Sprintf("Error creating migration\n %s", err.Error()))
-		}
-		db.Close()
-		color.Green("Migration created successfully")
 	},
+}
+
+func createMigration(config config.Config) error {
+	currentTime := fmt.Sprintf("%d", time.Now().Unix())
+	migrationDir := config.MigrationsDir + "/" + currentTime
+	if err := os.MkdirAll(migrationDir, 0755); err != nil {
+		return fmt.Errorf(createMigrationErrorStrings["migrationDir"], err.Error())
+	}
+	err := createMigrationFiles(migrationDir)
+	if err != nil {
+		return fmt.Errorf(createMigrationErrorStrings["migrationFiles"], err.Error())
+	}
+	db, err := sql.Open("postgres", config.DbURL)
+	if err != nil {
+		removeMigrationSetup(migrationDir)
+		return fmt.Errorf(createMigrationErrorStrings["database"], err.Error())
+	}
+	_, err = db.Exec(queries.CreateMigrationQuery, currentTime)
+	if err != nil {
+		removeMigrationSetup(migrationDir)
+		return fmt.Errorf(createMigrationErrorStrings["migration"], err.Error())
+	}
+	db.Close()
+	color.Green("Migration created successfully")
+	return nil
 }
 
 func init() {
@@ -58,11 +74,7 @@ func init() {
 	rootCmd.AddCommand(createMigrationCmd)
 }
 
-func removeMigrationSetup(migrationDir string) {
-	os.RemoveAll(migrationDir)
-}
-
-func createUpAndDownMigrationFiles(migrationDir string) error {
+func createMigrationFiles(migrationDir string) error {
 	upFile, err := os.Create(migrationDir + "/up.sql")
 	if err != nil {
 		removeMigrationSetup(migrationDir)
@@ -80,8 +92,6 @@ func createUpAndDownMigrationFiles(migrationDir string) error {
 	return nil
 }
 
-func handleErrorWithRemoveMigration(migrationDir string, err string) {
-	color.Red(err)
-	removeMigrationSetup(migrationDir)
-	os.Exit(1)
+func removeMigrationSetup(migrationDir string) {
+	os.RemoveAll(migrationDir)
 }

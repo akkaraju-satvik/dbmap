@@ -7,13 +7,21 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/akkaraju-satvik/dbmap/config"
 	"github.com/akkaraju-satvik/dbmap/queries"
-	"github.com/akkaraju-satvik/dbmap/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	_ "github.com/lib/pq"
 )
+
+var initErrorStrings = map[string]string{
+	"migrations": "Error creating migrations directory\n %s",
+	"config":     "Error creating config file",
+	"table":      "Error creating migrations table\n %s",
+	"db":         "Could not find a database with the provided connection string\n %s",
+	"postgres":   "Please provide a valid postgres connection string\n Example: postgres://user:password@localhost:5432/dbname\n",
+}
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -32,10 +40,6 @@ The config file will contain the database connection string and the migrations d
 			color.Red(err.Error())
 			os.Exit(1)
 		}
-		if err != nil {
-			color.Red(err.Error())
-			os.Exit(1)
-		}
 		if connection == "" {
 			fmt.Printf("Enter the database connection string: ")
 			fmt.Scanln(&connection)
@@ -44,52 +48,57 @@ The config file will contain the database connection string and the migrations d
 				os.Exit(1)
 			}
 		}
-		// check if connection is a postgres connection string
-		postgresConnStringRegex := regexp.MustCompile(`^postgres:\/\/.*\:.*@.*\/.*$`)
-		if !postgresConnStringRegex.MatchString(connection) {
-			color.Red("Please provide a valid postgres connection string\n Example: postgres://user:password@localhost:5432/dbname\n")
-			os.Exit(1)
-		}
 		ssl, _ := cmd.Flags().GetBool("ssl")
 		if !strings.Contains(connection, "sslmode=require") && !ssl {
 			connection = connection + "?sslmode=disable"
 		}
-		// create migrations directory
-		err = os.MkdirAll(migrationsDir, 0755)
+		err = initializeProject(migrationsDir, connection)
 		if err != nil {
-			color.Red("Error creating migrations directory\n %s", err.Error())
+			color.Red(err.Error())
 			os.Exit(1)
 		}
-		// create config file
-		configFile, err := os.Create("dbmap.config.yaml")
-		if err != nil {
-			color.Red("Error creating config file")
-			os.Exit(1)
-		}
-		defer configFile.Close()
-		configFileContent := strings.Replace(utils.ConfigFile, "$MIGRATIONS_DIR", migrationsDir, 1)
-		configFileContent = strings.Replace(configFileContent, "$DB_URL", connection, 1)
-		_, err = configFile.WriteString(configFileContent)
-		if err != nil {
-			color.Red("Error writing to config file")
-			removeSetup()
-			os.Exit(1)
-		}
-		db, err := sql.Open("postgres", connection)
-		if err != nil {
-			color.Red("Could not find a database with the provided connection string\n %s", err.Error())
-			removeSetup()
-			os.Exit(1)
-		}
-		defer db.Close()
-		_, err = db.Exec(queries.InitQuery)
-		if err != nil {
-			color.Red("Error creating migrations table\n %s", err.Error())
-			removeSetup()
-			os.Exit(1)
-		}
-		color.Green("Setup complete")
 	},
+}
+
+func initializeProject(migrationsDir, connection string) error {
+	postgresConnStringRegex := regexp.MustCompile(`^postgres:\/\/.*\:.*@.*\/.*$`)
+	if !postgresConnStringRegex.MatchString(connection) {
+		return fmt.Errorf(initErrorStrings["postgres"])
+	}
+	if migrationsDir == "" {
+		migrationsDir = "migrations"
+	}
+	err := os.MkdirAll(migrationsDir, 0755)
+	if err != nil {
+		removeSetup()
+		return fmt.Errorf(initErrorStrings["migrations"], err.Error())
+	}
+	configFile, err := os.Create("dbmap.config.yaml")
+	if err != nil {
+		removeSetup()
+		return fmt.Errorf(initErrorStrings["config"])
+	}
+	defer configFile.Close()
+	configFileContent := strings.Replace(config.ConfigFile, "$MIGRATIONS_DIR", migrationsDir, 1)
+	configFileContent = strings.Replace(configFileContent, "$DB_URL", connection, 1)
+	_, err = configFile.WriteString(configFileContent)
+	if err != nil {
+		removeSetup()
+		return fmt.Errorf(initErrorStrings["config"])
+	}
+	db, err := sql.Open("postgres", connection)
+	if err != nil {
+		removeSetup()
+		return fmt.Errorf(initErrorStrings["db"], err.Error())
+	}
+	defer db.Close()
+	_, err = db.Exec(queries.InitQuery)
+	if err != nil {
+		removeSetup()
+		return fmt.Errorf(initErrorStrings["table"], err.Error())
+	}
+	color.Green("Setup complete")
+	return nil
 }
 
 func init() {
